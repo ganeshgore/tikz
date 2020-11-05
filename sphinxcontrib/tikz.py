@@ -223,14 +223,19 @@ def render_tikz(self, node, libs='', stringsubst=False):
                             OUT_EXTENSION[self.builder.config.tikz_proc_suite])
     relfn = posixpath.join(self.builder.imgpath, fname)
     outfn = path.join(self.builder.outdir, '_images', fname)
+    outtex = path.join(self.builder.outdir, '_tex', 'tikz-%s.tex' % shasum)
 
     if path.isfile(outfn):
+        return relfn
+
+    if path.isfile(outtex):
         return relfn
 
     if hasattr(self.builder, '_tikz_warned'):
         return None
 
     ensuredir(path.dirname(outfn))
+    ensuredir(path.dirname(outtex))
 
     latex = DOC_HEAD % libs
     latex += self.builder.config.tikz_latex_preamble
@@ -242,6 +247,7 @@ def render_tikz(self, node, libs='', stringsubst=False):
         tf = open('tikz-%s.tex' % shasum, 'wb')
         tf.write(latex)
         tf.close()
+        shutil.copyfile('tikz-%s.tex' % shasum, outtex)
 
         system([self.builder.config.latex_engine, '--interaction=nonstopmode',
                 'tikz-%s.tex' % shasum],
