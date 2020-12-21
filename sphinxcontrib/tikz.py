@@ -133,6 +133,8 @@ class TikzDirective(Directive):
     optional_arguments = 1
     final_argument_whitespace = True
     option_spec = {'libs': directives.unchanged,
+                   'alt': directives.unchanged,
+                   'align': directives.unchanged,
                    'stringsubst': directives.flag,
                    'xscale': directives.unchanged,
                    'include': directives.unchanged}
@@ -167,6 +169,8 @@ class TikzDirective(Directive):
 
         node['libs'] = self.options.get('libs', '')
         node['xscale'] = self.options.get('xscale', '')
+        node['alt'] = self.options.get('alt', 'This is a figure.')
+        node['align'] = self.options.get('align', 'center')
         if 'stringsubst' in self.options:
             node['stringsubst'] = True
         else:
@@ -181,6 +185,7 @@ class TikzDirective(Directive):
             node += nodes.caption(captionstr, '', nodes.Text(captionstr))
 
         return [node]
+
 
 DOC_HEAD = r'''
 \documentclass[12pt,tikz]{standalone}
@@ -202,7 +207,7 @@ OUT_EXTENSION = {
     'ImageMagick': 'png',
     'Netpbm': 'png',
     'pdf2svg': 'svg',
-    }
+}
 
 
 def cleanup_tikzcode(self, node):
@@ -281,7 +286,8 @@ def render_tikz(self, node, libs='', stringsubst=False):
                        outfile=outfn)
 
         elif self.builder.config.tikz_proc_suite == "GhostScript":
-            ghostscript = which('ghostscript') or which('gs') or which('gswin64')
+            ghostscript = which('ghostscript') or which(
+                'gs') or which('gswin64')
             if self.builder.config.tikz_transparent:
                 device = "pngalpha"
             else:
@@ -311,7 +317,7 @@ def html_visit_tikzinline(self, node):
         sm.walkabout(self)
     else:
         self.body.append('<img src="%s" alt="%s"/>' %
-                         (fname, self.encode(node['tikz']).strip()))
+                         (fname, self.encode(node['alt']).strip()))
     raise nodes.SkipNode
 
 
@@ -330,10 +336,11 @@ def html_visit_tikz(self, node):
         scale = ''
         if node['xscale']:
             scale = 'width="%s%%"' % (node['xscale'])
-        self.body.append(self.starttag(node, 'div', CLASS='figure'))
+        self.body.append(self.starttag(node, 'div', CLASS='figure',
+                                       STYLE='text-align: %s' % self.encode(node['align']).strip()))
         self.body.append('<p>')
         self.body.append('<img %s src="%s" alt="%s" /></p>\n' %
-                          (scale, fname, self.encode(node['tikz']).strip()))
+                         (scale, fname, self.encode(node['alt']).strip()))
 
 
 def html_depart_tikz(self, node):
@@ -362,12 +369,12 @@ def latex_visit_tikz(self, node):
 
     # If scaling option is set, enclose in resizebox
     scale_start = r""
-    scale_end   = r""
+    scale_end = r""
     scale = 0
     if node['xscale']:
         scale = int(node['xscale']) * 0.01
-        scale_start= r"\resizebox{" + str(scale) + r"\columnwidth}{!}{"
-        scale_end  = r"}"
+        scale_start = r"\resizebox{" + str(scale) + r"\columnwidth}{!}{"
+        scale_end = r"}"
 
     tikz = scale_start + tikz + scale_end
 
@@ -378,6 +385,7 @@ def latex_visit_tikz(self, node):
     # No caption: place in a center environment.
     else:
         self.body.append('\\begin{center}' + tikz + '\\end{center}')
+
 
 def latex_depart_tikz(self, node):
     # If we have a caption, we need to add a label for any cross-referencing
@@ -450,8 +458,8 @@ def which(program):
 
 def setup(app):
     app.add_enumerable_node(tikz, 'figure',
-                 html=(html_visit_tikz, html_depart_tikz),
-                 latex=(latex_visit_tikz, latex_depart_tikz))
+                            html=(html_visit_tikz, html_depart_tikz),
+                            latex=(latex_visit_tikz, latex_depart_tikz))
     app.add_node(tikzinline,
                  html=(html_visit_tikzinline, depart_tikzinline),
                  latex=(latex_visit_tikzinline, depart_tikzinline))
